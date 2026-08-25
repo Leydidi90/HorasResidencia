@@ -1,0 +1,115 @@
+import React, { useState, useEffect } from 'react';
+import { getAllUsers, getAllStatuses, getLogs, getDailyWorkedTimeMs } from '../services/db';
+import { Users, Activity, CheckSquare } from 'lucide-react';
+
+const AdminDashboard = () => {
+  const [residents, setResidents] = useState([]);
+  const [statuses, setStatuses] = useState({});
+  const [allLogs, setAllLogs] = useState([]);
+  const [dailyHours, setDailyHours] = useState({});
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const usersData = await getAllUsers();
+      const statusData = await getAllStatuses();
+      const logsData = await getLogs();
+      
+      const today = new Date().toLocaleDateString('es-ES');
+      const hoursData = {};
+      for (const u of usersData) {
+        hoursData[u.id] = await getDailyWorkedTimeMs(u.id, today);
+      }
+      
+      setResidents(usersData);
+      setStatuses(statusData);
+      setAllLogs(logsData);
+      setDailyHours(hoursData);
+    };
+    
+    fetchData();
+    // En un entorno real con Supabase esto sería un listener en tiempo real o polling.
+    const interval = setInterval(fetchData, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
+      <header style={{ marginBottom: '32px' }}>
+        <h2 className="title" style={{ fontSize: '2rem' }}>Panel de Encargado (Admin)</h2>
+        <p className="subtitle">Vista global de los practicantes de Ingeniería</p>
+      </header>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '24px' }}>
+        
+        {/* Panel de Residentes */}
+        <div className="glass-panel">
+          <h3 className="title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Users size={20} className="text-accent" /> Estado Actual de Practicantes
+          </h3>
+          <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {residents.length === 0 ? (
+              <p style={{ color: 'var(--text-secondary)' }}>No hay practicantes registrados.</p>
+            ) : (
+              residents.map(resident => (
+                <div key={resident.id} className="glass-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <p style={{ fontWeight: 600 }}>{resident.name}</p>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                      {resident.email} • {Math.floor((dailyHours[resident.id] || 0) / 3600000)}h {Math.floor(((dailyHours[resident.id] || 0) % 3600000) / 60000)}m hoy
+                    </p>
+                  </div>
+                  <div style={{ 
+                    padding: '6px 12px', 
+                    borderRadius: '20px', 
+                    fontSize: '0.8rem', 
+                    fontWeight: 600,
+                    backgroundColor: statuses[resident.id] === 'in' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                    color: statuses[resident.id] === 'in' ? 'var(--success)' : 'var(--danger)'
+                  }}>
+                    {statuses[resident.id] === 'in' ? 'En Turno' : 'Fuera'}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Registro Global de Actividades */}
+        <div className="glass-panel">
+          <h3 className="title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Activity size={20} className="text-accent" /> Feed Global
+          </h3>
+          <div style={{ marginTop: '20px', maxHeight: '500px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {allLogs.length === 0 ? (
+              <p style={{ color: 'var(--text-secondary)' }}>No hay actividad reciente.</p>
+            ) : (
+              allLogs.map(log => {
+                const user = residents.find(r => r.id === log.userId) || { name: 'Usuario Desconocido' };
+                return (
+                  <div key={log.id} style={{ padding: '12px', borderBottom: '1px solid var(--glass-border)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                      <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--accent-color)' }}>{user.name}</span>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{log.date} {log.time}</span>
+                    </div>
+                    <div style={{ fontSize: '0.9rem' }}>
+                      {log.type === 'in' && <span style={{ color: 'var(--success)' }}>Hizo Check-in</span>}
+                      {log.type === 'out' && <span style={{ color: 'var(--danger)' }}>Hizo Check-out</span>}
+                      {log.type === 'activity' && (
+                        <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start', marginTop: '4px' }}>
+                          <CheckSquare size={16} style={{ color: 'var(--accent-color)', marginTop: '2px' }} />
+                          <span>{log.content}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default AdminDashboard;
