@@ -172,3 +172,35 @@ export const getTotalWorkedTimeMs = async (userId) => {
 
   return totalMs;
 };
+
+export const addManualShift = async (userId, dateStr, startTimeStr, endTimeStr) => {
+  const targetDateObj = new Date(`${dateStr}T12:00:00`);
+  const formattedDate = targetDateObj.toLocaleDateString('es-ES');
+  
+  const startTimestamp = new Date(`${dateStr}T${startTimeStr}:00`).getTime();
+  const endTimestamp = new Date(`${dateStr}T${endTimeStr}:00`).getTime();
+
+  const inLog = {
+    id: Date.now().toString() + '-in',
+    user_id: userId,
+    type: 'in',
+    time: startTimeStr,
+    date: formattedDate,
+    content: 'Ajuste Manual - Entrada',
+    attachment: null,
+    timestamp: startTimestamp
+  };
+
+  const outLog = {
+    id: Date.now().toString() + '-out',
+    user_id: userId,
+    type: 'out',
+    time: endTimeStr,
+    date: formattedDate,
+    content: 'Ajuste Manual - Salida',
+    attachment: null,
+    timestamp: endTimestamp
+  };
+
+  await supabase.from('logs').insert([inLog, outLog]);
+};

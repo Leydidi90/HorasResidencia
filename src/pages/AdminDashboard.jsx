@@ -1,12 +1,45 @@
 import React, { useState, useEffect } from 'react';
-import { getAllUsers, getAllStatuses, getLogs, getDailyWorkedTimeMs } from '../services/db';
-import { Users, Activity, CheckSquare } from 'lucide-react';
+import { getAllUsers, getAllStatuses, getLogs, getDailyWorkedTimeMs, addManualShift } from '../services/db';
+import { Users, Activity, CheckSquare, Clock } from 'lucide-react';
 
 const AdminDashboard = () => {
   const [residents, setResidents] = useState([]);
   const [statuses, setStatuses] = useState({});
   const [allLogs, setAllLogs] = useState([]);
   const [dailyHours, setDailyHours] = useState({});
+
+  const [manualUser, setManualUser] = useState('');
+  const [manualDate, setManualDate] = useState('');
+  const [manualStart, setManualStart] = useState('');
+  const [manualEnd, setManualEnd] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+
+  const handleManualSubmit = async (e) => {
+    e.preventDefault();
+    if (!manualUser || !manualDate || !manualStart || !manualEnd) return;
+    
+    setIsSubmitting(true);
+    await addManualShift(manualUser, manualDate, manualStart, manualEnd);
+    
+    setManualUser('');
+    setManualDate('');
+    setManualStart('');
+    setManualEnd('');
+    setSuccessMessage('¡Horas agregadas correctamente!');
+    setTimeout(() => setSuccessMessage(''), 3000);
+    
+    const logsData = await getLogs();
+    setAllLogs(logsData);
+    
+    const today = new Date().toLocaleDateString('es-ES');
+    const hoursData = {};
+    for (const u of residents) {
+      hoursData[u.id] = await getDailyWorkedTimeMs(u.id, today);
+    }
+    setDailyHours(hoursData);
+    setIsSubmitting(false);
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -106,6 +139,48 @@ const AdminDashboard = () => {
               })
             )}
           </div>
+        </div>
+
+        {/* Ajuste Manual de Horas */}
+        <div className="glass-panel" style={{ gridColumn: '1 / -1' }}>
+          <h3 className="title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Clock size={20} className="text-accent" /> Ajuste Manual de Horas
+          </h3>
+          <form onSubmit={handleManualSubmit} style={{ marginTop: '20px', display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <div style={{ flex: '1', minWidth: '200px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem' }}>Practicante</label>
+              <select 
+                className="input-field" 
+                value={manualUser} 
+                onChange={(e) => setManualUser(e.target.value)}
+                required
+                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--glass-bg)', color: 'var(--text-color)' }}
+              >
+                <option value="">Selecciona a alguien...</option>
+                {residents.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+              </select>
+            </div>
+            
+            <div style={{ flex: '1', minWidth: '150px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem' }}>Fecha</label>
+              <input type="date" className="input-field" value={manualDate} onChange={(e) => setManualDate(e.target.value)} required style={{ width: '100%' }} />
+            </div>
+
+            <div style={{ flex: '1', minWidth: '120px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem' }}>Entrada</label>
+              <input type="time" className="input-field" value={manualStart} onChange={(e) => setManualStart(e.target.value)} required style={{ width: '100%' }} />
+            </div>
+
+            <div style={{ flex: '1', minWidth: '120px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem' }}>Salida</label>
+              <input type="time" className="input-field" value={manualEnd} onChange={(e) => setManualEnd(e.target.value)} required style={{ width: '100%' }} />
+            </div>
+
+            <button type="submit" className="btn btn-primary" disabled={isSubmitting} style={{ height: '42px', padding: '0 24px', cursor: 'pointer' }}>
+              {isSubmitting ? 'Guardando...' : 'Agregar Horas'}
+            </button>
+          </form>
+          {successMessage && <p style={{ color: 'var(--success)', marginTop: '16px', fontWeight: 'bold' }}>{successMessage}</p>}
         </div>
       </div>
     </div>
