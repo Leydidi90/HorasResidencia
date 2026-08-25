@@ -141,6 +141,10 @@ export const getDailyWorkedTimeMs = async (userId, dateString) => {
     totalMs += (Date.now() - currentIn);
   }
 
+  if (totalMs > 0) {
+    totalMs = Math.max(0, totalMs - 3600000);
+  }
+
   return totalMs;
 };
 
@@ -154,23 +158,39 @@ export const getTotalWorkedTimeMs = async (userId) => {
     
   if (error || !logs) return 0;
 
-  let totalMs = 0;
-  let currentIn = null;
-
+  const logsByDate = {};
   for (const log of logs) {
-    if (log.type === 'in') {
-      currentIn = log.timestamp;
-    } else if (log.type === 'out' && currentIn) {
-      totalMs += (log.timestamp - currentIn);
-      currentIn = null;
+    if (!logsByDate[log.date]) logsByDate[log.date] = [];
+    logsByDate[log.date].push(log);
+  }
+
+  let finalTotalMs = 0;
+  const todayStr = new Date().toLocaleDateString('es-ES');
+
+  for (const date in logsByDate) {
+    let dayTotal = 0;
+    let currentIn = null;
+    const dayLogs = logsByDate[date];
+
+    for (const log of dayLogs) {
+      if (log.type === 'in') {
+        currentIn = log.timestamp;
+      } else if (log.type === 'out' && currentIn) {
+        dayTotal += (log.timestamp - currentIn);
+        currentIn = null;
+      }
+    }
+
+    if (date === todayStr && currentIn) {
+      dayTotal += (Date.now() - currentIn);
+    }
+
+    if (dayTotal > 0) {
+      finalTotalMs += Math.max(0, dayTotal - 3600000); // Descuento de comida fijo (1 hr)
     }
   }
 
-  if (currentIn) {
-    totalMs += (Date.now() - currentIn);
-  }
-
-  return totalMs;
+  return finalTotalMs;
 };
 
 export const addManualShift = async (userId, dateStr, startTimeStr, endTimeStr) => {
