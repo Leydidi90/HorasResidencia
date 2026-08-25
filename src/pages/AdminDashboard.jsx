@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { getAllUsers, getAllStatuses, getLogs, getDailyWorkedTimeMs, addManualShift } from '../services/db';
-import { Users, Activity, CheckSquare, Clock } from 'lucide-react';
+import { getAllUsers, getAllStatuses, getLogs, getDailyWorkedTimeMs, addManualShift, deleteUser, deleteLog } from '../services/db';
+import { Users, Activity, CheckSquare, Clock, Trash2 } from 'lucide-react';
 
 const AdminDashboard = () => {
   const [residents, setResidents] = useState([]);
@@ -14,6 +14,23 @@ const AdminDashboard = () => {
   const [manualEnd, setManualEnd] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+
+  const refreshData = async () => {
+    const usersData = await getAllUsers();
+    const statusData = await getAllStatuses();
+    const logsData = await getLogs();
+    
+    const today = new Date().toLocaleDateString('es-ES');
+    const hoursData = {};
+    for (const u of usersData) {
+      hoursData[u.id] = await getDailyWorkedTimeMs(u.id, today);
+    }
+    
+    setResidents(usersData);
+    setStatuses(statusData);
+    setAllLogs(logsData);
+    setDailyHours(hoursData);
+  };
 
   const handleManualSubmit = async (e) => {
     e.preventDefault();
@@ -29,39 +46,28 @@ const AdminDashboard = () => {
     setSuccessMessage('¡Horas agregadas correctamente!');
     setTimeout(() => setSuccessMessage(''), 3000);
     
-    const logsData = await getLogs();
-    setAllLogs(logsData);
-    
-    const today = new Date().toLocaleDateString('es-ES');
-    const hoursData = {};
-    for (const u of residents) {
-      hoursData[u.id] = await getDailyWorkedTimeMs(u.id, today);
-    }
-    setDailyHours(hoursData);
+    await refreshData();
     setIsSubmitting(false);
   };
 
+  const handleDeleteUser = async (userId, userName) => {
+    if (window.confirm(`¿Estás 100% seguro de que deseas eliminar permanentemente a ${userName}?`)) {
+      await deleteUser(userId);
+      await refreshData();
+    }
+  };
+
+  const handleDeleteLog = async (logId, userName, logType) => {
+    if (window.confirm(`¿Seguro que quieres borrar este registro de ${logType} de ${userName}? Se recalcularán sus horas.`)) {
+      await deleteLog(logId);
+      await refreshData();
+    }
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
-      const usersData = await getAllUsers();
-      const statusData = await getAllStatuses();
-      const logsData = await getLogs();
-      
-      const today = new Date().toLocaleDateString('es-ES');
-      const hoursData = {};
-      for (const u of usersData) {
-        hoursData[u.id] = await getDailyWorkedTimeMs(u.id, today);
-      }
-      
-      setResidents(usersData);
-      setStatuses(statusData);
-      setAllLogs(logsData);
-      setDailyHours(hoursData);
-    };
-    
-    fetchData();
+    refreshData();
     // En un entorno real con Supabase esto sería un listener en tiempo real o polling.
-    const interval = setInterval(fetchData, 5000);
+    const interval = setInterval(refreshData, 5000);
     return () => clearInterval(interval);
   }, []);
 
@@ -91,15 +97,24 @@ const AdminDashboard = () => {
                       {resident.email} • {Math.floor((dailyHours[resident.id] || 0) / 3600000)}h {Math.floor(((dailyHours[resident.id] || 0) % 3600000) / 60000)}m hoy
                     </p>
                   </div>
-                  <div style={{ 
-                    padding: '6px 12px', 
-                    borderRadius: '20px', 
-                    fontSize: '0.8rem', 
-                    fontWeight: 600,
-                    backgroundColor: statuses[resident.id] === 'in' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
-                    color: statuses[resident.id] === 'in' ? 'var(--success)' : 'var(--danger)'
-                  }}>
-                    {statuses[resident.id] === 'in' ? 'En Turno' : 'Fuera'}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ 
+                      padding: '6px 12px', 
+                      borderRadius: '20px', 
+                      fontSize: '0.8rem', 
+                      fontWeight: 600,
+                      backgroundColor: statuses[resident.id] === 'in' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                      color: statuses[resident.id] === 'in' ? 'var(--success)' : 'var(--danger)'
+                    }}>
+                      {statuses[resident.id] === 'in' ? 'En Turno' : 'Fuera'}
+                    </div>
+                    <button 
+                      onClick={() => handleDeleteUser(resident.id, resident.name)}
+                      style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '4px' }}
+                      title="Eliminar practicante"
+                    >
+                      <Trash2 size={16} />
+                    </button>
                   </div>
                 </div>
               ))
@@ -122,7 +137,16 @@ const AdminDashboard = () => {
                   <div key={log.id} style={{ padding: '12px', borderBottom: '1px solid var(--glass-border)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                       <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--accent-color)' }}>{user.name}</span>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{log.date} {log.time}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{log.date} {log.time}</span>
+                        <button 
+                          onClick={() => handleDeleteLog(log.id, user.name, log.type)}
+                          style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '2px', display: 'flex' }}
+                          title="Borrar registro"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </div>
                     <div style={{ fontSize: '0.9rem' }}>
                       {log.type === 'in' && <span style={{ color: 'var(--success)' }}>Hizo Check-in</span>}

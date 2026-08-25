@@ -204,3 +204,13 @@ export const addManualShift = async (userId, dateStr, startTimeStr, endTimeStr) 
 
   await supabase.from('logs').insert([inLog, outLog]);
 };
+
+export const deleteUser = async (userId) => {
+  const { error } = await supabase.from('users').delete().eq('id', userId);
+  if (error) console.error('Error deleting user:', error);
+};
+
+export const deleteLog = async (logId) => {
+  const { error } = await supabase.from('logs').delete().eq('id', logId);
+  if (error) console.error('Error deleting log:', error);
+};
