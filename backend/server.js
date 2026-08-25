@@ -56,15 +56,12 @@ cron.schedule('0 18 * * *', async () => {
       if (!usersWithCheckin.has(user.id)) {
         console.log(`Enviando alerta a ${user.email}`);
         
-        /* 
-        // DESCOMENTAR CUANDO TENGAS CREDENCIALES DE CORREO
         await transporter.sendMail({
           from: '"Portal de Prácticas" <noreply@residencia.com>',
           to: user.email,
           subject: '⚠️ Alerta: Registro de Asistencia Faltante',
           text: `Hola ${user.name},\n\nHemos notado que no has registrado tu entrada el día de hoy (${today}).\n\nRecuerda que debes cumplir 500 horas, ¡no olvides hacer Check-in!\n\nSaludos,\nSistema de Prácticas de Ingeniería.`
         });
-        */
       }
     }
   } catch (error) {
