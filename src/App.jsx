@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-ro
 import { getCurrentUser, logout } from './services/auth';
 import Login from './pages/Login';
 import ResidentDashboard from './pages/ResidentDashboard';
-import AdminDashboard from './pages/AdminDashboard';
 import { LogOut, Sun, Moon } from 'lucide-react';
 
 function App() {
@@ -52,7 +51,7 @@ function App() {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
               <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                {currentUser.role === 'admin' ? 'Encargado' : 'Practicante'}: {currentUser.name}
+                Practicante: {currentUser.name}
               </span>
               <button 
                 onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
@@ -72,7 +71,6 @@ function App() {
           </nav>
         )}
 
-        {/* Main Content */}
         <main style={{ flex: 1, padding: '40px 20px', display: 'flex', justifyContent: 'center' }}>
           <Routes>
             <Route 
@@ -80,24 +78,15 @@ function App() {
               element={
                 !currentUser ? 
                 <Login onLoginSuccess={setCurrentUser} /> : 
-                <Navigate to={currentUser.role === 'admin' ? "/admin" : "/resident"} />
+                <Navigate to="/resident" />
               } 
             />
             
             <Route 
               path="/resident" 
               element={
-                currentUser && currentUser.role === 'resident' ? 
+                currentUser ? 
                 <ResidentDashboard user={currentUser} /> : 
-                <Navigate to="/login" />
-              } 
-            />
-            
-            <Route 
-              path="/admin" 
-              element={
-                currentUser && currentUser.role === 'admin' ? 
-                <AdminDashboard /> : 
                 <Navigate to="/login" />
               } 
             />
@@ -105,7 +94,7 @@ function App() {
             {/* Redirección por defecto */}
             <Route 
               path="*" 
-              element={<Navigate to={currentUser ? (currentUser.role === 'admin' ? "/admin" : "/resident") : "/login"} />} 
+              element={<Navigate to={currentUser ? "/resident" : "/login"} />} 
             />
           </Routes>
         </main>
