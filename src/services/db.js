@@ -193,7 +193,7 @@ export const getTotalWorkedTimeMs = async (userId) => {
   return finalTotalMs;
 };
 
-export const addManualShift = async (userId, dateStr, startTimeStr, endTimeStr) => {
+export const addManualShift = async (userId, dateStr, startTimeStr, endTimeStr, note = '') => {
   const targetDateObj = new Date(`${dateStr}T12:00:00`);
   const formattedDate = targetDateObj.toLocaleDateString('es-ES');
   
@@ -217,7 +217,7 @@ export const addManualShift = async (userId, dateStr, startTimeStr, endTimeStr) 
     type: 'out',
     time: endTimeStr,
     date: formattedDate,
-    content: 'Ajuste Manual - Salida',
+    content: note ? `Ajuste Manual - Salida: ${note}` : 'Ajuste Manual - Salida',
     attachment: null,
     timestamp: endTimestamp
   };

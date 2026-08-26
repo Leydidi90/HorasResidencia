@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, LogIn, LogOut } from 'lucide-react';
+import { Clock, Play, Square } from 'lucide-react';
 import { getDailyWorkedTimeMs } from '../services/db';
 
 const ClockInOut = ({ onAction, status, user }) => {
-  const [time, setTime] = useState(new Date());
   const [workedMs, setWorkedMs] = useState(0);
 
   useEffect(() => {
@@ -17,9 +16,8 @@ const ClockInOut = ({ onAction, status, user }) => {
     
     fetchTime();
     const timer = setInterval(() => {
-      setTime(new Date());
-      fetchTime(); // Actualiza el tiempo trabajado cada segundo si está 'in'
-    }, 1000);
+      fetchTime(); // Actualiza el tiempo trabajado
+    }, 10000);
     
     return () => clearInterval(timer);
   }, [user]);
@@ -28,60 +26,70 @@ const ClockInOut = ({ onAction, status, user }) => {
     const totalSeconds = Math.floor(ms / 1000);
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-    return `${hours}h ${minutes}m ${seconds}s`;
+    return `${hours}h ${minutes}m`;
   };
 
-  const formatTime = (date) => {
-    return date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  };
-
-  const formatDate = (date) => {
-    return date.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-  };
+  const isWorking = status === 'in';
 
   return (
-    <div className="glass-panel" style={{ textAlign: 'center' }}>
-      <h2 className="title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-        <Clock size={24} className="text-accent" /> Control de Tiempo
-      </h2>
-      <p className="subtitle" style={{ textTransform: 'capitalize' }}>{formatDate(time)}</p>
-      
-      <div style={{ margin: '30px 0' }}>
-        <div style={{ fontSize: '3.5rem', fontWeight: '700', letterSpacing: '2px', textShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
-          {formatTime(time)}
+    <div className="glass-panel" style={{ width: '100%', padding: '24px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--glass-border)', paddingBottom: '16px', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)' }}>
+          <Clock size={16} />
+          <span style={{ fontSize: '0.85rem', letterSpacing: '1px', textTransform: 'uppercase' }}>
+            Cronómetro en vivo
+          </span>
         </div>
-        <div style={{ marginTop: '10px', fontSize: '1.1rem', color: 'var(--text-secondary)' }}>
-          Estado actual: <strong style={{ color: status === 'in' ? 'var(--success)' : 'var(--danger)' }}>
-            {status === 'in' ? 'En Turno' : 'Fuera de turno'}
-          </strong>
-        </div>
-        <div style={{ marginTop: '15px', padding: '10px', backgroundColor: 'rgba(96, 165, 250, 0.1)', borderRadius: '8px', display: 'inline-block' }}>
-          <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Tiempo Hoy:</span>
-          <div style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--accent-color)' }}>
-            {formatWorkedTime(workedMs)}
-          </div>
+        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+          Alternativa: marca entrada al llegar y salida al retirarte.
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
+      <div style={{ padding: '16px 24px', border: '1px solid var(--glass-border)', borderRadius: '8px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
+        <h3 className="title" style={{ fontSize: '1.2rem', marginBottom: '8px', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          TURNO ACTUAL 
+          <span style={{ 
+            fontSize: '0.7rem', 
+            padding: '4px 8px', 
+            borderRadius: '4px',
+            backgroundColor: isWorking ? 'rgba(16, 185, 129, 0.1)' : 'var(--glass-bg)',
+            color: isWorking ? 'var(--success)' : 'var(--text-secondary)'
+          }}>
+            {isWorking ? 'EN PROGRESO' : 'SIN INICIAR'}
+          </span>
+        </h3>
+        
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '24px' }}>
+          Inicia un turno al llegar y ciérralo al retirarte.
+          {isWorking && <span style={{ marginLeft: '12px', fontWeight: 600, color: 'var(--accent-color)' }}>Llevas hoy: {formatWorkedTime(workedMs)}</span>}
+        </p>
+
         <button 
-          className="btn btn-success" 
-          disabled={status === 'in'}
-          onClick={() => onAction('in')}
-          style={{ padding: '14px 28px', fontSize: '1.1rem' }}
+          onClick={() => onAction(isWorking ? 'out' : 'in')}
+          style={{ 
+            width: '100%', 
+            padding: '16px', 
+            fontSize: '1rem', 
+            fontWeight: 700, 
+            letterSpacing: '2px', 
+            textTransform: 'uppercase',
+            backgroundColor: isWorking ? 'var(--danger)' : 'var(--text-color)',
+            color: isWorking ? '#fff' : 'var(--bg-color)',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: '8px',
+            transition: 'all 0.2s ease'
+          }}
         >
-          <LogIn size={20} />
-          Check-in
-        </button>
-        <button 
-          className="btn btn-danger" 
-          disabled={status === 'out'}
-          onClick={() => onAction('out')}
-          style={{ padding: '14px 28px', fontSize: '1.1rem' }}
-        >
-          <LogOut size={20} />
-          Check-out
+          {isWorking ? (
+            <><Square size={18} fill="currentColor" /> CERRAR TURNO</>
+          ) : (
+            <><Play size={18} fill="currentColor" /> INICIAR TURNO</>
+          )}
         </button>
       </div>
     </div>
