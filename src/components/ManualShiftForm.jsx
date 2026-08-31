@@ -107,7 +107,7 @@ const ManualShiftForm = ({ user, onShiftAdded }) => {
         </div>
 
         <div>
-          <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.8rem', fontWeight: 600, letterSpacing: '1px' }}>NOTA (OPCIONAL)</label>
+          <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.8rem', fontWeight: 600, letterSpacing: '1px' }}>ACTIVIDADES (OPCIONAL)</label>
           <input 
             type="text" 
             className="input-field" 

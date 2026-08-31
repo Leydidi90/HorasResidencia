@@ -1,6 +1,8 @@
 import React from 'react';
 import { History, Trash2, Download } from 'lucide-react';
 import { deleteLog } from '../services/db';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 
 const HistoryPanel = ({ logs, onLogsChanged }) => {
   // Group logs into shifts
@@ -58,32 +60,57 @@ const HistoryPanel = ({ logs, onLogsChanged }) => {
     }
   };
 
-  const exportToCSV = () => {
-    const headers = ['Fecha', 'Entrada', 'Salida', 'Horas', 'Nota'];
-    const rows = shifts.map(s => [
-      s.date,
-      s.start,
-      s.end || 'En curso',
-      s.hours,
-      s.note
-    ]);
-    
-    // Add BOM for Excel UTF-8 compatibility
-    let csvContent = '\uFEFF' + headers.join(',') + '\r\n';
-    
-    rows.forEach(row => {
-      csvContent += row.map(cell => `"${(cell || '').toString().replace(/"/g, '""')}"`).join(',') + '\r\n';
+  const exportToExcel = async () => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Bitácora');
+
+    worksheet.columns = [
+      { header: 'Fecha', key: 'date', width: 15 },
+      { header: 'Entrada', key: 'start', width: 12 },
+      { header: 'Salida', key: 'end', width: 12 },
+      { header: 'Horas', key: 'hours', width: 15 },
+      { header: 'Actividades', key: 'note', width: 45 }
+    ];
+
+    const headerRow = worksheet.getRow(1);
+    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    headerRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF1E293B' }
+    };
+    headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+
+    shifts.forEach(shift => {
+      worksheet.addRow({
+        date: shift.date,
+        start: shift.start,
+        end: shift.end || 'En curso',
+        hours: shift.hours,
+        note: shift.note === '-' ? '' : shift.note
+      });
     });
-    
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'bitacora_practicas.csv');
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber > 1) {
+        row.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+        if (rowNumber % 2 === 0) {
+          row.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+        }
+      }
+      row.eachCell((cell) => {
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+          left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+          bottom: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+          right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+        };
+      });
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    saveAs(blob, 'bitacora_practicas.xlsx');
   };
 
   return (
@@ -95,7 +122,7 @@ const HistoryPanel = ({ logs, onLogsChanged }) => {
             {shifts.length} turno{shifts.length !== 1 ? 's' : ''} registrado{shifts.length !== 1 ? 's' : ''}.
           </p>
         </div>
-        <button onClick={exportToCSV} className="btn btn-outline" style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '8px 16px', fontSize: '0.85rem' }}>
+        <button onClick={exportToExcel} className="btn btn-outline" style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '8px 16px', fontSize: '0.85rem' }}>
           <Download size={16} /> Exportar Excel
         </button>
       </div>
@@ -108,7 +135,7 @@ const HistoryPanel = ({ logs, onLogsChanged }) => {
               <th style={{ padding: '12px 8px', fontWeight: 600 }}>ENTRADA</th>
               <th style={{ padding: '12px 8px', fontWeight: 600 }}>SALIDA</th>
               <th style={{ padding: '12px 8px', fontWeight: 600 }}>HORAS</th>
-              <th style={{ padding: '12px 8px', fontWeight: 600 }}>NOTA</th>
+              <th style={{ padding: '12px 8px', fontWeight: 600 }}>ACTIVIDADES</th>
               <th style={{ padding: '12px 8px', fontWeight: 600, width: '40px' }}></th>
             </tr>
           </thead>
