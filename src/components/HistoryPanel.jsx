@@ -1,6 +1,6 @@
 import React from 'react';
 import { History, Trash2, Download } from 'lucide-react';
-import { deleteLog } from '../services/db';
+import { deleteLog, deleteShiftLogs } from '../services/db';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 
@@ -21,11 +21,14 @@ const HistoryPanel = ({ logs, onLogsChanged }) => {
         end: null, 
         endMs: null, 
         hours: 0, 
+        hours: 0, 
+        inLogId: log.id,
         deleteId: log.id 
       };
     } else if (log.type === 'out' && currentShift) {
       currentShift.end = log.time;
       currentShift.endMs = log.timestamp;
+      currentShift.outLogId = log.id;
       currentShift.deleteId = log.id; 
       
       if (log.content && log.content.includes('Salida:')) {
@@ -53,9 +56,9 @@ const HistoryPanel = ({ logs, onLogsChanged }) => {
 
   shifts.reverse(); // newest first
 
-  const handleDelete = async (logId) => {
+  const handleDelete = async (shift) => {
     if (window.confirm('¿Seguro que quieres borrar este registro? Se ajustarán tus horas totales.')) {
-      await deleteLog(logId);
+      await deleteShiftLogs(shift.inLogId, shift.outLogId);
       if (onLogsChanged) onLogsChanged();
     }
   };
@@ -156,7 +159,7 @@ const HistoryPanel = ({ logs, onLogsChanged }) => {
                   <td style={{ padding: '16px 8px', color: 'var(--text-secondary)' }}>{shift.note}</td>
                   <td style={{ padding: '16px 8px', textAlign: 'center' }}>
                     <button 
-                      onClick={() => handleDelete(shift.deleteId)}
+                      onClick={() => handleDelete(shift)}
                       style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px' }}
                       title="Borrar turno"
                     >

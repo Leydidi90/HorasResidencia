@@ -205,6 +205,9 @@ export const addManualShift = async (userId, dateStr, startTimeStr, endTimeStr, 
   const targetDateObj = new Date(`${dateStr}T12:00:00`);
   const formattedDate = targetDateObj.toLocaleDateString('es-ES');
   
+  // Limpiar cualquier registro previo de ese día para evitar conflictos
+  await supabase.from('logs').delete().eq('user_id', userId).eq('date', formattedDate);
+  
   const startTimestamp = new Date(`${dateStr}T${startTimeStr}:00`).getTime();
   const endTimestamp = new Date(`${dateStr}T${endTimeStr}:00`).getTime();
 
@@ -241,4 +244,9 @@ export const deleteUser = async (userId) => {
 export const deleteLog = async (logId) => {
   const { error } = await supabase.from('logs').delete().eq('id', logId);
   if (error) console.error('Error deleting log:', error);
+};
+
+export const deleteShiftLogs = async (inLogId, outLogId) => {
+  if (inLogId) await supabase.from('logs').delete().eq('id', inLogId);
+  if (outLogId) await supabase.from('logs').delete().eq('id', outLogId);
 };
