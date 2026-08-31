@@ -1,5 +1,5 @@
 import React from 'react';
-import { History, Trash2 } from 'lucide-react';
+import { History, Trash2, Download } from 'lucide-react';
 import { deleteLog } from '../services/db';
 
 const HistoryPanel = ({ logs, onLogsChanged }) => {
@@ -58,12 +58,47 @@ const HistoryPanel = ({ logs, onLogsChanged }) => {
     }
   };
 
+  const exportToCSV = () => {
+    const headers = ['Fecha', 'Entrada', 'Salida', 'Horas', 'Nota'];
+    const rows = shifts.map(s => [
+      s.date,
+      s.start,
+      s.end || 'En curso',
+      s.hours,
+      s.note
+    ]);
+    
+    // Add BOM for Excel UTF-8 compatibility
+    let csvContent = '\uFEFF' + headers.join(',') + '\r\n';
+    
+    rows.forEach(row => {
+      csvContent += row.map(cell => `"${(cell || '').toString().replace(/"/g, '""')}"`).join(',') + '\r\n';
+    });
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'bitacora_practicas.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column' }}>
-      <h3 className="title" style={{ fontSize: '1.2rem', marginBottom: '4px', letterSpacing: '1px' }}>HISTORIAL</h3>
-      <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '20px' }}>
-        {shifts.length} turno{shifts.length !== 1 ? 's' : ''} registrado{shifts.length !== 1 ? 's' : ''}.
-      </p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
+        <div>
+          <h3 className="title" style={{ fontSize: '1.2rem', marginBottom: '4px', letterSpacing: '1px' }}>HISTORIAL / BITÁCORA</h3>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '20px' }}>
+            {shifts.length} turno{shifts.length !== 1 ? 's' : ''} registrado{shifts.length !== 1 ? 's' : ''}.
+          </p>
+        </div>
+        <button onClick={exportToCSV} className="btn btn-outline" style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '8px 16px', fontSize: '0.85rem' }}>
+          <Download size={16} /> Exportar Excel
+        </button>
+      </div>
 
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>

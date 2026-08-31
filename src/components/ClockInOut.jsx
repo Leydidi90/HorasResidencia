@@ -4,6 +4,7 @@ import { getDailyWorkedTimeMs } from '../services/db';
 
 const ClockInOut = ({ onAction, status, user }) => {
   const [workedMs, setWorkedMs] = useState(0);
+  const [customTime, setCustomTime] = useState('');
 
   useEffect(() => {
     const fetchTime = async () => {
@@ -21,6 +22,11 @@ const ClockInOut = ({ onAction, status, user }) => {
     
     return () => clearInterval(timer);
   }, [user]);
+
+  useEffect(() => {
+    const now = new Date();
+    setCustomTime(now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: false }));
+  }, [status]);
 
   const formatWorkedTime = (ms) => {
     const totalSeconds = Math.floor(ms / 1000);
@@ -40,9 +46,6 @@ const ClockInOut = ({ onAction, status, user }) => {
             Cronómetro en vivo
           </span>
         </div>
-        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-          Alternativa: marca entrada al llegar y salida al retirarte.
-        </div>
       </div>
 
       <div style={{ padding: '16px 24px', border: '1px solid var(--glass-border)', borderRadius: '8px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
@@ -59,13 +62,28 @@ const ClockInOut = ({ onAction, status, user }) => {
           </span>
         </h3>
         
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '24px' }}>
-          Inicia un turno al llegar y ciérralo al retirarte.
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '16px' }}>
+          Inicia un turno al llegar y ciérralo al retirarte. Puedes ajustar la hora si es necesario.
           {isWorking && <span style={{ marginLeft: '12px', fontWeight: 600, color: 'var(--accent-color)' }}>Llevas hoy: {formatWorkedTime(workedMs)}</span>}
         </p>
 
+        <div style={{ marginBottom: '20px' }}>
+          <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '8px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+            {isWorking ? 'HORA DE SALIDA' : 'HORA DE ENTRADA'}
+          </label>
+          <div style={{ position: 'relative' }}>
+             <input 
+               type="time" 
+               className="input-field" 
+               value={customTime} 
+               onChange={(e) => setCustomTime(e.target.value)} 
+               style={{ width: '100%', paddingLeft: '12px', background: 'rgba(0,0,0,0.1)' }} 
+             />
+          </div>
+        </div>
+
         <button 
-          onClick={() => onAction(isWorking ? 'out' : 'in')}
+          onClick={() => onAction(isWorking ? 'out' : 'in', customTime)}
           style={{ 
             width: '100%', 
             padding: '16px', 

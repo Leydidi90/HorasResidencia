@@ -77,11 +77,19 @@ export const getLogs = async (userId = null) => {
   }));
 };
 
-export const addLog = async (userId, type, content = '', attachment = null) => {
+export const addLog = async (userId, type, content = '', attachment = null, customTime = null) => {
   const now = new Date();
-  const timeString = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+  let timeString = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: false });
   const dateString = now.toLocaleDateString('es-ES');
-  const timestamp = now.getTime();
+  let timestamp = now.getTime();
+  
+  if (customTime) {
+    timeString = customTime;
+    const [hours, minutes] = customTime.split(':');
+    const customDate = new Date();
+    customDate.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0);
+    timestamp = customDate.getTime();
+  }
   
   const newLog = {
     id: Date.now().toString(),

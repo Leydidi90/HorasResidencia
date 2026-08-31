@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getLogs, addLog, getStatus } from '../services/db';
+import { getLogs, addLog, getStatus, updateStatus } from '../services/db';
 import ClockInOut from '../components/ClockInOut';
 import HistoryPanel from '../components/HistoryPanel';
 import ProgressTracker from '../components/ProgressTracker';
@@ -21,9 +21,10 @@ const ResidentDashboard = ({ user }) => {
     loadData();
   }, [user]);
 
-  const handleAction = async (actionType) => {
+  const handleAction = async (actionType, customTime = null) => {
     if (!user) return;
-    await addLog(user.id, actionType);
+    await addLog(user.id, actionType, '', null, customTime);
+    await updateStatus(user.id, actionType);
     await loadData();
   };
 
@@ -50,10 +51,7 @@ const ResidentDashboard = ({ user }) => {
         <ProgressTracker user={user} status={status} logs={logs} />
       </div>
 
-      {/* Middle Row: Live Chronometer / Clock In Out */}
-      <div style={{ marginBottom: '24px' }}>
-        <ClockInOut onAction={handleAction} status={status} user={user} />
-      </div>
+      {/* Removed Clock In Out as requested */}
 
       {/* Bottom Row: History Table */}
       <div>
