@@ -150,7 +150,7 @@ export const getDailyWorkedTimeMs = async (userId, dateString) => {
   }
 
   if (totalMs > 0) {
-    totalMs = Math.max(0, totalMs - 3600000);
+    totalMs = Math.max(0, totalMs);
   }
 
   return totalMs;
@@ -194,7 +194,7 @@ export const getTotalWorkedTimeMs = async (userId) => {
     }
 
     if (dayTotal > 0) {
-      finalTotalMs += Math.max(0, dayTotal - 3600000); // Descuento de comida fijo (1 hr)
+      finalTotalMs += Math.max(0, dayTotal); // Sin descuento fijo
     }
   }
 
