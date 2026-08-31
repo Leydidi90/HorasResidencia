@@ -21,7 +21,7 @@ const HistoryPanel = ({ logs, onLogsChanged }) => {
         end: null, 
         endMs: null, 
         hours: 0, 
-        hours: 0, 
+        durationMs: 0,
         inLogId: log.id,
         deleteId: log.id 
       };
@@ -39,6 +39,7 @@ const HistoryPanel = ({ logs, onLogsChanged }) => {
       const h = Math.floor(duration / 3600000);
       const m = Math.floor((duration % 3600000) / 60000);
       currentShift.hours = `${h}h ${m}m`;
+      currentShift.durationMs = duration;
       
       shifts.push(currentShift);
       currentShift = null;
@@ -51,6 +52,7 @@ const HistoryPanel = ({ logs, onLogsChanged }) => {
     const m = Math.floor((duration % 3600000) / 60000);
     currentShift.end = 'En curso';
     currentShift.hours = `${h}h ${m}m`;
+    currentShift.durationMs = duration;
     shifts.push(currentShift);
   }
 
@@ -75,6 +77,8 @@ const HistoryPanel = ({ logs, onLogsChanged }) => {
       { header: 'Actividades', key: 'note', width: 45 }
     ];
 
+    worksheet.getColumn('hours').numFmt = '[h]:mm';
+
     const headerRow = worksheet.getRow(1);
     headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
     headerRow.fill = {
@@ -84,15 +88,31 @@ const HistoryPanel = ({ logs, onLogsChanged }) => {
     };
     headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
 
+    let totalDurationMs = 0;
+
     shifts.forEach(shift => {
+      totalDurationMs += (shift.durationMs || 0);
+      const excelTime = shift.durationMs ? (shift.durationMs / (24 * 60 * 60 * 1000)) : 0;
+      
       worksheet.addRow({
         date: shift.date,
         start: shift.start,
         end: shift.end || 'En curso',
-        hours: shift.hours,
+        hours: excelTime,
         note: shift.note === '-' ? '' : shift.note
       });
     });
+
+    const totalExcelTime = totalDurationMs / (24 * 60 * 60 * 1000);
+    const totalRow = worksheet.addRow({
+      date: 'TOTAL',
+      start: '',
+      end: '',
+      hours: totalExcelTime,
+      note: ''
+    });
+    totalRow.font = { bold: true };
+    totalRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
 
     worksheet.eachRow((row, rowNumber) => {
       if (rowNumber > 1) {
