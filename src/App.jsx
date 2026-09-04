@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-ro
 import { getCurrentUser, logout } from './services/auth';
 import Login from './pages/Login';
 import ResidentDashboard from './pages/ResidentDashboard';
+import AdminDashboard from './pages/AdminDashboard';
 import { LogOut, Sun, Moon } from 'lucide-react';
 
 function App() {
@@ -78,23 +79,32 @@ function App() {
               element={
                 !currentUser ? 
                 <Login onLoginSuccess={setCurrentUser} /> : 
-                <Navigate to="/resident" />
+                <Navigate to={currentUser.role === 'admin' ? "/admin" : "/resident"} />
               } 
             />
             
             <Route 
               path="/resident" 
               element={
-                currentUser ? 
+                currentUser && currentUser.role !== 'admin' ? 
                 <ResidentDashboard user={currentUser} /> : 
-                <Navigate to="/login" />
+                <Navigate to={currentUser?.role === 'admin' ? '/admin' : '/login'} />
+              } 
+            />
+
+            <Route 
+              path="/admin" 
+              element={
+                currentUser && currentUser.role === 'admin' ? 
+                <AdminDashboard user={currentUser} /> : 
+                <Navigate to={currentUser ? '/resident' : '/login'} />
               } 
             />
 
             {/* Redirección por defecto */}
             <Route 
               path="*" 
-              element={<Navigate to={currentUser ? "/resident" : "/login"} />} 
+              element={<Navigate to={currentUser ? (currentUser.role === 'admin' ? "/admin" : "/resident") : "/login"} />} 
             />
           </Routes>
         </main>

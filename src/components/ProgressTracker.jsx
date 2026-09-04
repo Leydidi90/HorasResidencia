@@ -7,23 +7,36 @@ const ProgressTracker = ({ user, status, logs = [] }) => {
   const GOAL_MS = GOAL_HOURS * 3600000; // 500 hours in milliseconds
 
   useEffect(() => {
-    const fetchTotalTime = async () => {
-      if (user) {
-        const ms = await getTotalWorkedTimeMs(user.id);
-        setTotalMs(ms);
+    const calculateTotal = () => {
+      const sortedLogs = [...logs].sort((a, b) => a.timestamp - b.timestamp);
+      let ms = 0;
+      let currentIn = null;
+
+      for (const log of sortedLogs) {
+        if (log.type === 'in') {
+          currentIn = log.timestamp;
+        } else if (log.type === 'out' && currentIn) {
+          ms += (log.timestamp - currentIn);
+          currentIn = null;
+        }
       }
+
+      if (currentIn && status === 'in') {
+        ms += (Date.now() - currentIn);
+      }
+      setTotalMs(ms);
     };
     
-    fetchTotalTime();
+    calculateTotal();
     
     const timer = setInterval(() => {
       if (status === 'in') {
-        fetchTotalTime();
+        calculateTotal();
       }
     }, 10000);
     
     return () => clearInterval(timer);
-  }, [user, status]);
+  }, [logs, status]);
 
   const totalHours = totalMs / 3600000;
   const missingHours = Math.max(0, GOAL_HOURS - totalHours);

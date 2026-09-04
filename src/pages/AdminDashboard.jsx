@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { getAllUsers, getAllStatuses, getLogs, getDailyWorkedTimeMs, addManualShift, deleteUser, deleteLog } from '../services/db';
-import { Users, Activity, CheckSquare, Clock, Trash2 } from 'lucide-react';
+import { getAllUsers, getAllStatuses, getLogs, getDailyWorkedTimeMs, getTotalWorkedTimeMs, addManualShift, deleteUser, deleteLog } from '../services/db';
+import { Users, Activity, CheckSquare, Clock, Trash2, Download } from 'lucide-react';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 
 const AdminDashboard = () => {
   const [residents, setResidents] = useState([]);
   const [statuses, setStatuses] = useState({});
   const [allLogs, setAllLogs] = useState([]);
   const [dailyHours, setDailyHours] = useState({});
+  const [totalHoursMap, setTotalHoursMap] = useState({});
 
   const [manualUser, setManualUser] = useState('');
   const [manualDate, setManualDate] = useState('');
@@ -22,14 +25,17 @@ const AdminDashboard = () => {
     
     const today = new Date().toLocaleDateString('es-ES');
     const hoursData = {};
+    const totalData = {};
     for (const u of usersData) {
       hoursData[u.id] = await getDailyWorkedTimeMs(u.id, today);
+      totalData[u.id] = await getTotalWorkedTimeMs(u.id);
     }
     
     setResidents(usersData);
     setStatuses(statusData);
     setAllLogs(logsData);
     setDailyHours(hoursData);
+    setTotalHoursMap(totalData);
   };
 
   const handleManualSubmit = async (e) => {
@@ -73,9 +79,84 @@ const AdminDashboard = () => {
 
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
-      <header style={{ marginBottom: '32px' }}>
-        <h2 className="title" style={{ fontSize: '2rem' }}>Panel de Encargado (Admin)</h2>
-        <p className="subtitle">Vista global de los practicantes de Ingeniería</p>
+  const exportAllToExcel = async () => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Horas Globales');
+
+    worksheet.columns = [
+      { header: 'Nombre', key: 'name', width: 25 },
+      { header: 'Email', key: 'email', width: 30 },
+      { header: 'Horas Totales (Decimal)', key: 'hoursText', width: 20 },
+      { header: 'Horas Totales (Excel)', key: 'hoursExcel', width: 20 },
+    ];
+
+    worksheet.getColumn('hoursExcel').numFmt = '[h]:mm';
+
+    const headerRow = worksheet.getRow(1);
+    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    headerRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF1E293B' }
+    };
+    headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+
+    let totalGlobalMs = 0;
+
+    residents.forEach(u => {
+      const totalMs = totalHoursMap[u.id] || 0;
+      totalGlobalMs += totalMs;
+      const excelTime = totalMs > 0 ? (totalMs / (24 * 60 * 60 * 1000)) : 0;
+      worksheet.addRow({
+        name: u.name,
+        email: u.email,
+        hoursText: (totalMs / 3600000).toFixed(2),
+        hoursExcel: excelTime
+      });
+    });
+
+    const totalGlobalExcelTime = totalGlobalMs / (24 * 60 * 60 * 1000);
+    const totalRow = worksheet.addRow({
+      name: 'TOTAL GLOBAL',
+      email: '',
+      hoursText: (totalGlobalMs / 3600000).toFixed(2),
+      hoursExcel: totalGlobalExcelTime
+    });
+    totalRow.font = { bold: true };
+    totalRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
+
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber > 1) {
+        row.alignment = { vertical: 'middle', horizontal: 'center' };
+        if (rowNumber % 2 === 0 && rowNumber !== worksheet.rowCount) {
+          row.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+        }
+      }
+      row.eachCell((cell) => {
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+          left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+          bottom: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+          right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+        };
+      });
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    saveAs(blob, 'reporte_global_practicantes.xlsx');
+  };
+
+  return (
+    <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
+      <header style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '16px' }}>
+        <div>
+          <h2 className="title" style={{ fontSize: '2rem' }}>Panel de Encargado (Admin)</h2>
+          <p className="subtitle">Vista global de los practicantes de Ingeniería</p>
+        </div>
+        <button onClick={exportAllToExcel} className="btn btn-primary" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <Download size={18} /> Exportar Excel Global
+        </button>
       </header>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '24px' }}>
@@ -94,7 +175,7 @@ const AdminDashboard = () => {
                   <div>
                     <p style={{ fontWeight: 600 }}>{resident.name}</p>
                     <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                      {resident.email} • {Math.floor((dailyHours[resident.id] || 0) / 3600000)}h {Math.floor(((dailyHours[resident.id] || 0) % 3600000) / 60000)}m hoy
+                      {resident.email} • Hoy: {Math.floor((dailyHours[resident.id] || 0) / 3600000)}h {Math.floor(((dailyHours[resident.id] || 0) % 3600000) / 60000)}m • Total: {((totalHoursMap[resident.id] || 0) / 3600000).toFixed(2)}h
                     </p>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
